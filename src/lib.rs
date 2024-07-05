@@ -8,12 +8,13 @@ pub struct Mission {
 }
 
 impl Mission {
-    pub fn add_dummy_task(&mut self, sec: i32) {
+    pub fn add_dummy_task(&mut self, sec: f64) {
         self.tasks.push(Box::new(DummyTask { duration: sec }))
     }
     pub fn run(&self) {
         let multi_progress = MultiProgress::new();
-
+        let main_progress = ProgressBar::new(self.tasks.len().try_into().unwrap());
+        let main_progress = multi_progress.add(main_progress);
         let numbered_tasks: Vec<(usize, &Box<dyn RunnableTask>)> =
             self.tasks.iter().enumerate().collect();
 
@@ -27,9 +28,11 @@ impl Mission {
                 mp_handle.set_message(format!("Task {} running...", id));
                 task.run();
                 mp_handle.finish_and_clear();
+                main_progress.inc(1);
             })
             .collect();
         let _ = multi_progress.clear();
+        main_progress.finish_and_clear();
     }
 }
 
@@ -38,13 +41,13 @@ pub trait RunnableTask: Sync + Send {
 }
 
 pub struct DummyTask {
-    duration: i32,
+    duration: f64,
 }
 
 impl RunnableTask for DummyTask {
     fn run(&self) {
         let result = Command::new("sleep")
-            .arg(format!("0.{}", self.duration))
+            .arg(format!("{}", self.duration))
             .spawn();
         result.unwrap().wait().unwrap();
     }
