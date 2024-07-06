@@ -1,4 +1,4 @@
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use std::{process::Command, time::Duration};
 
@@ -13,22 +13,37 @@ impl Mission {
     }
     pub fn run(&self) {
         let multi_progress = MultiProgress::new();
-        let main_progress = ProgressBar::new(self.tasks.len().try_into().unwrap());
-        let main_progress = multi_progress.add(main_progress);
+        let n: u64 = self.tasks.len().try_into().unwrap();
+        let main_progress = ProgressBar::new(n);
+        let main_style = ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.magenta} {pos:>7}/{len:7} {msg}",
+        )
+        .unwrap();
+
+        let main_progress = multi_progress.insert(n.try_into().unwrap(), main_progress);
+        main_progress.set_style(main_style);
         let numbered_tasks: Vec<(usize, &Box<dyn RunnableTask>)> =
             self.tasks.iter().enumerate().collect();
 
+        let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
+            .unwrap()
+            //.tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
+            //.tick_chars("✶✸✹✺✹✷ ");
+            //.tick_chars("┤┘┴└├┌┬┐ ");
+            .tick_chars("▏▎▍▌▋▊▉▊▋▌▍▎ ");
         let _: Vec<()> = numbered_tasks
             .par_iter()
             .map(|(id, task)| {
-                let pb = ProgressBar::new_spinner();
-                let mp_handle = multi_progress.add(pb);
-                mp_handle.enable_steady_tick(Duration::from_millis(50));
+                let mp_handle = multi_progress.insert_before(&main_progress, ProgressBar::new(1));
+                mp_handle.set_style(spinner_style.clone());
+
+                mp_handle.enable_steady_tick(Duration::from_millis(70));
 
                 mp_handle.set_message(format!("Task {} running...", id));
                 task.run();
                 mp_handle.finish_and_clear();
                 main_progress.inc(1);
+                let _ = multi_progress.println(format!("Finished {id}"));
             })
             .collect();
         let _ = multi_progress.clear();
