@@ -1,6 +1,9 @@
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use std::{process::Command, time::Duration};
+use std::{
+    process::{Command, ExitStatus},
+    time::Duration,
+};
 
 #[derive(Default)]
 pub struct Mission {
@@ -52,7 +55,7 @@ impl Mission {
 }
 
 pub trait RunnableTask: Sync + Send {
-    fn run(&self);
+    fn run(&self) -> std::process::Output;
 }
 
 pub struct DummyTask {
@@ -60,10 +63,10 @@ pub struct DummyTask {
 }
 
 impl RunnableTask for DummyTask {
-    fn run(&self) {
+    fn run(&self) -> std::process::Output {
         let result = Command::new("sleep")
             .arg(format!("{}", self.duration))
-            .spawn();
-        result.unwrap().wait().unwrap();
+            .output();
+        return result.expect("failed to spawn child");
     }
 }
