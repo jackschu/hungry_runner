@@ -1,9 +1,6 @@
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use std::{
-    process::{Command, ExitStatus},
-    time::Duration,
-};
+use std::{process::Command, time::Duration};
 
 #[derive(Default)]
 pub struct Mission {
@@ -34,19 +31,37 @@ impl Mission {
             //.tick_chars("✶✸✹✺✹✷ ");
             //.tick_chars("┤┘┴└├┌┬┐ ");
             .tick_chars("▏▎▍▌▋▊▉▊▋▌▍▎ ");
-        let _: Vec<()> = numbered_tasks
+        let _: Vec<std::process::Output> = numbered_tasks
             .par_iter()
-            .map(|(id, task)| {
+            .map(|(_id, task)| {
+                let title = task.title();
                 let mp_handle = multi_progress.insert_before(&main_progress, ProgressBar::new(1));
                 mp_handle.set_style(spinner_style.clone());
 
                 mp_handle.enable_steady_tick(Duration::from_millis(70));
 
-                mp_handle.set_message(format!("Task {} running...", id));
-                task.run();
+                mp_handle.set_message(format!("Task: {} running...", title));
+                let result = task.run();
                 mp_handle.finish_and_clear();
                 main_progress.inc(1);
-                let _ = multi_progress.println(format!("Finished {id}"));
+
+                let update_string = if result.status.success() {
+                    format!("{} Task: {title}", console::style("✓").green())
+                } else {
+                    format!(
+                        "{} Task: {title} {} (exit code: {})",
+                        console::style("✗").red(),
+                        console::style("Failed").red(),
+                        result
+                            .status
+                            .code()
+                            .map(|x| x.to_string())
+                            .unwrap_or("None".to_string()),
+                    )
+                };
+
+                let _ = multi_progress.println(format!(" {update_string}"));
+                return result;
             })
             .collect();
         let _ = multi_progress.clear();
@@ -56,6 +71,7 @@ impl Mission {
 
 pub trait RunnableTask: Sync + Send {
     fn run(&self) -> std::process::Output;
+    fn title(&self) -> String;
 }
 
 pub struct DummyTask {
@@ -68,5 +84,8 @@ impl RunnableTask for DummyTask {
             .arg(format!("{}", self.duration))
             .output();
         return result.expect("failed to spawn child");
+    }
+    fn title(&self) -> String {
+        "Sleep command".to_string()
     }
 }
