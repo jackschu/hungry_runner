@@ -31,7 +31,7 @@ impl Mission {
             //.tick_chars("✶✸✹✺✹✷ ");
             //.tick_chars("┤┘┴└├┌┬┐ ");
             .tick_chars("▏▎▍▌▋▊▉▊▋▌▍▎ ");
-        let _: Vec<std::process::Output> = numbered_tasks
+        let _: Vec<()> = numbered_tasks
             .par_iter()
             .map(|(_id, task)| {
                 let title = task.title();
@@ -45,23 +45,32 @@ impl Mission {
                 mp_handle.finish_and_clear();
                 main_progress.inc(1);
 
-                let update_string = if result.status.success() {
-                    format!("{} Task: {title}", console::style("✓").green())
-                } else {
-                    format!(
-                        "{} Task: {title} {} (exit code: {})",
+                let update_string = match result {
+                    Ok(result) => {
+                        if result.status.success() {
+                            format!("{} Task: {title}", console::style("✓").green())
+                        } else {
+                            format!(
+                                "{} Task: {title} {} (exit code: {})",
+                                console::style("✗").red(),
+                                console::style("Failed").red(),
+                                result
+                                    .status
+                                    .code()
+                                    .map(|x| x.to_string())
+                                    .unwrap_or("None".to_string()),
+                            )
+                        }
+                    }
+                    Err(err) => format!(
+                        "{} Task: {title} {} (error msg: {})",
                         console::style("✗").red(),
                         console::style("Failed").red(),
-                        result
-                            .status
-                            .code()
-                            .map(|x| x.to_string())
-                            .unwrap_or("None".to_string()),
-                    )
+                        err,
+                    ),
                 };
 
                 let _ = multi_progress.println(format!(" {update_string}"));
-                return result;
             })
             .collect();
         let _ = multi_progress.clear();
@@ -70,7 +79,7 @@ impl Mission {
 }
 
 pub trait RunnableTask: Sync + Send {
-    fn run(&self) -> std::process::Output;
+    fn run(&self) -> Result<std::process::Output, String>;
     fn title(&self) -> String;
 }
 
@@ -79,11 +88,11 @@ pub struct DummyTask {
 }
 
 impl RunnableTask for DummyTask {
-    fn run(&self) -> std::process::Output {
+    fn run(&self) -> Result<std::process::Output, String> {
         let result = Command::new("sleep")
             .arg(format!("{}", self.duration))
             .output();
-        return result.expect("failed to spawn child");
+        return result.map_err(|err| err.to_string());
     }
     fn title(&self) -> String {
         "Sleep command".to_string()
