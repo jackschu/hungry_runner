@@ -8,8 +8,11 @@ pub struct Mission {
 }
 
 impl Mission {
+    pub fn add_task(&mut self, task: Box<dyn RunnableTask>) {
+        self.tasks.push(task)
+    }
     pub fn add_dummy_task(&mut self, sec: f64) {
-        self.tasks.push(Box::new(DummyTask { duration: sec }))
+        self.add_task(Box::new(DummyTask { duration: sec }))
     }
     pub fn run(&self) {
         let multi_progress = MultiProgress::new();
@@ -83,6 +86,52 @@ pub trait RunnableTask: Sync + Send {
     fn title(&self) -> String;
 }
 
+pub struct BashTask {
+    user_string: String,
+}
+
+impl BashTask {
+    pub fn new(input: String) -> Self {
+        Self { user_string: input }
+    }
+}
+
+impl RunnableTask for BashTask {
+    fn run(&self) -> Result<std::process::Output, String> {
+        let result = Command::new("bash")
+            .args(&["-c", self.user_string.as_str()])
+            .output();
+        return result.map_err(|err| err.to_string());
+    }
+    fn title(&self) -> String {
+        self.user_string.clone()
+    }
+}
+
+pub struct StringTask {
+    user_string: String,
+}
+
+impl StringTask {
+    pub fn new(input: String) -> Self {
+        Self { user_string: input }
+    }
+}
+
+impl RunnableTask for StringTask {
+    fn run(&self) -> Result<std::process::Output, String> {
+        let result = if let Some((binary, args)) = self.user_string.split_once(" ") {
+            Command::new(binary).arg(args).output()
+        } else {
+            Command::new(self.user_string.clone()).output()
+        };
+        return result.map_err(|err| err.to_string());
+    }
+    fn title(&self) -> String {
+        self.user_string.clone()
+    }
+}
+
 pub struct DummyTask {
     duration: f64,
 }
@@ -98,3 +147,5 @@ impl RunnableTask for DummyTask {
         "Sleep command".to_string()
     }
 }
+
+pub mod cli;
