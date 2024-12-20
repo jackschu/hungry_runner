@@ -9,7 +9,7 @@
     cargo2nix.url = "github:cargo2nix/cargo2nix";
   };
 
-  outputs = {self, nixpkgs, flake-utils, cargo2nix, rust-overlay}:
+  outputs = {self, flake-compat, nixpkgs, flake-utils, cargo2nix, rust-overlay}:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {

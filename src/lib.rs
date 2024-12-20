@@ -52,6 +52,7 @@ impl Mission {
                 let out = result.is_ok();
                     
                 let update_string = match result {
+
                     Ok(result) => {
                         if result.status.success() {
                             format!("{} Task: {title}", console::style("✓").green())
@@ -126,7 +127,8 @@ impl StringTask {
 impl RunnableTask for StringTask {
     fn run(&self) -> Result<std::process::Output, String> {
         let result = if let Some((binary, args)) = self.user_string.split_once(" ") {
-            Command::new(binary).arg(args).output()
+            let arg_array: Vec<_> = args.split(' ').collect();
+            Command::new(binary).args(arg_array).output()
         } else {
             Command::new(self.user_string.clone()).output()
         };
