@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use clap::Parser;
 use rand::Rng;
 
@@ -28,5 +30,8 @@ fn main() {
     for _i in 0..cli.demo {
         mission.add_dummy_task(rng.gen_range(0.0..3.0));
     }
-    mission.run();
+    let passing = mission.run();
+    if !passing {
+        exit(1);
+    }
 }

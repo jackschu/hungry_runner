@@ -14,7 +14,7 @@ impl Mission {
     pub fn add_dummy_task(&mut self, sec: f64) {
         self.add_task(Box::new(DummyTask { duration: sec }))
     }
-    pub fn run(&self) {
+    pub fn run(&self) -> bool {
         let multi_progress = MultiProgress::new();
         let n: u64 = self.tasks.len().try_into().unwrap();
         let main_progress = ProgressBar::new(n);
@@ -34,7 +34,7 @@ impl Mission {
             //.tick_chars("✶✸✹✺✹✷ ");
             //.tick_chars("┤┘┴└├┌┬┐ ");
             .tick_chars("▏▎▍▌▋▊▉▊▋▌▍▎ ");
-        let _: Vec<()> = numbered_tasks
+        let pass_fail: Vec<bool> = numbered_tasks
             .par_iter()
             .map(|(_id, task)| {
                 let title = task.title();
@@ -48,6 +48,9 @@ impl Mission {
                 mp_handle.finish_and_clear();
                 main_progress.inc(1);
 
+                
+                let out = result.is_ok();
+                    
                 let update_string = match result {
                     Ok(result) => {
                         if result.status.success() {
@@ -74,10 +77,12 @@ impl Mission {
                 };
 
                 let _ = multi_progress.println(format!(" {update_string}"));
+                out
             })
             .collect();
         let _ = multi_progress.clear();
         main_progress.finish_and_clear();
+        pass_fail.into_iter().all(|x|x)
     }
 }
 
