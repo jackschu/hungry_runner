@@ -3,6 +3,7 @@
 # nix run github:cargo2nix/cargo2nix
 {
   inputs = {
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
     cargo2nix.url = "github:cargo2nix/cargo2nix";
